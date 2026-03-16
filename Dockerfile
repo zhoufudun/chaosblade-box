@@ -23,9 +23,12 @@ WORKDIR /app
 #    && rm -rf helm-v3.5.3-linux-amd64.tar.gz
 
 # Build arguments for version and jar file
-ARG VERSION=1.0.5
+ARG VERSION=1.1.0
 ARG JAR_FILE=chaosblade-box-${VERSION}.jar
 
 COPY ./chaosblade-box-starter/target/${JAR_FILE} ./chaosblade-box.jar
 
-ENTRYPOINT ["java", "-Duser.timezone=Asia/Shanghai", "-jar", "chaosblade-box.jar"]
+ENTRYPOINT ["java", "-Duser.timezone=Asia/Shanghai", "-jar", "chaosblade-box.jar", \
+            "--spring.datasource.url=jdbc:mysql://mysql-server:3306/chaosblade?characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai", \
+            "--spring.datasource.username=root", \
+            "--spring.datasource.password=root123456"]
