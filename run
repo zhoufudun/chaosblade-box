@@ -1,0 +1,33 @@
+1、项目执行
+    clean package
+
+2、执行
+docker buildx build \
+--platform linux/arm64 \
+-t chaosblade-box:arm64-v1.1.0 .
+
+3、删除正在运行的chaosblade-box容器
+    docker rm 07532158b82831a4c5dafff908ed33e787c5b24bc567f0f52e5117157050cff
+
+4、删除docker 镜像
+    docker rmi chaosblade-box:arm64-v1.1.0
+
+5、docker运行：
+    docker run -d \
+      --name chaosblade-box \
+      --network chaos-net \
+      -p 8001:7001 \
+      chaosblade-box:arm64-v1.1.0
+
+
+其他：
+    1、mysql部署
+        docker run -d \
+          --name mysql-server \
+          --network chaos-net \
+          -e MYSQL_ROOT_PASSWORD=root123456 \
+          -e MYSQL_DATABASE=chaosblade \
+          -p 3307:3306 \
+          mysql:8.0
+    2、网络创建
+        docker network create chaos-net

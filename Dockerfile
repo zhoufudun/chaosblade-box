@@ -29,6 +29,6 @@ ARG JAR_FILE=chaosblade-box-${VERSION}.jar
 COPY ./chaosblade-box-starter/target/${JAR_FILE} ./chaosblade-box.jar
 
 ENTRYPOINT ["java", "-Duser.timezone=Asia/Shanghai", "-jar", "chaosblade-box.jar", \
-            "--spring.datasource.url=jdbc:mysql://mysql-server:3306/chaosblade?characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai", \
+            "--spring.datasource.url=jdbc:mysql://mysql-server:3306/chaosblade?characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true", \
             "--spring.datasource.username=root", \
             "--spring.datasource.password=root123456"]
