@@ -28,7 +28,19 @@ ARG JAR_FILE=chaosblade-box-${VERSION}.jar
 
 COPY ./chaosblade-box-starter/target/${JAR_FILE} ./chaosblade-box.jar
 
-ENTRYPOINT ["java", "-Duser.timezone=Asia/Shanghai", "-jar", "chaosblade-box.jar", \
-            "--spring.datasource.url=jdbc:mysql://mysql-server:3306/chaosblade?characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true", \
-            "--spring.datasource.username=root", \
-            "--spring.datasource.password=root123456"]
+# ENTRYPOINT ["java", "-Duser.timezone=Asia/Shanghai", "-jar", "chaosblade-box.jar", \
+#             "--spring.datasource.url=jdbc:mysql://mysql-server:3306/chaosblade?characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true", \
+#             "--spring.datasource.username=root", \
+#             "--spring.datasource.password=root123456"]
+
+# 改为（只保留 jar 启动，参数由外部传入）
+ENTRYPOINT ["java", "-Duser.timezone=Asia/Shanghai", "-jar", "chaosblade-box.jar"]
+
+
+# docker部署
+# docker run -d --name chaosblade-box \
+#   -p 8001:7001 \
+#   -e SPRING_DATASOURCE_URL="jdbc:mysql://mysql-server:3306/chaosblade?characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true" \
+#   -e SPRING_DATASOURCE_USERNAME=root \
+#   -e SPRING_DATASOURCE_PASSWORD=root123456 \
+#   chaosblade-box:arm64-v1.1.0
