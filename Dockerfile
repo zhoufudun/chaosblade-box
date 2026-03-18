@@ -23,7 +23,7 @@ WORKDIR /app
 #    && rm -rf helm-v3.5.3-linux-amd64.tar.gz
 
 # Build arguments for version and jar file
-ARG VERSION=1.1.0
+ARG VERSION=1.1.0-1
 ARG JAR_FILE=chaosblade-box-${VERSION}.jar
 
 COPY ./chaosblade-box-starter/target/${JAR_FILE} ./chaosblade-box.jar
