@@ -82,6 +82,12 @@ public class ApplicationDeviceRepository implements IRepository<String, Applicat
     return applicationDeviceMapper.selectList(queryWrapper);
   }
 
+  public int deleteByLastHealthPingTimeLt(Long threshold) {
+    QueryWrapper<ApplicationDeviceDO> queryWrapper = new QueryWrapper<>();
+    queryWrapper.lt("last_health_ping_time", threshold);
+    return applicationDeviceMapper.delete(queryWrapper);
+  }
+
   /**
    * 将最近心跳时间超出指定间隔的机器设置为下线
    *
