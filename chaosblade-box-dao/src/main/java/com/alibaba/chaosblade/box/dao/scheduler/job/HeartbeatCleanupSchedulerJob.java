@@ -18,67 +18,37 @@ package com.alibaba.chaosblade.box.dao.scheduler.job;
 
 import com.alibaba.chaosblade.box.dao.repository.ApplicationDeviceRepository;
 import com.alibaba.chaosblade.box.dao.repository.DeviceRepository;
-import com.alibaba.chaosblade.box.dao.scheduler.SchedulerConstant;
-import com.alibaba.chaosblade.box.dao.scheduler.SchedulerJobService;
-import com.alibaba.chaosblade.box.dao.scheduler.domain.SchedulerJobCreateRequest;
-import com.alibaba.chaosblade.box.dao.scheduler.quartz.BaseJob;
 import lombok.extern.slf4j.Slf4j;
-import org.quartz.DisallowConcurrentExecution;
-import org.quartz.Job;
-import org.quartz.JobExecutionContext;
-import org.quartz.JobExecutionException;
-import org.springframework.beans.factory.InitializingBean;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
-/** @author heartbeat-cleanup */
 @Component
 @Slf4j
-@DisallowConcurrentExecution
-public class HeartbeatCleanupSchedulerJob extends BaseJob implements Job, InitializingBean {
+public class HeartbeatCleanupSchedulerJob {
+
+  private static final long HEARTBEAT_TIMEOUT_MS = 2 * 60 * 1000;
 
   @Autowired private ApplicationDeviceRepository applicationDeviceRepository;
 
   @Autowired private DeviceRepository deviceRepository;
 
-  @Autowired private SchedulerJobService schedulerJobService;
-
-  private static final long HEARTBEAT_TIMEOUT_MS = 2 * 60 * 1000;
-
-  @Override
-  public void execute(JobExecutionContext context) throws JobExecutionException {
+  @Scheduled(fixedRate = 120000)
+  public void cleanup() {
     long threshold = System.currentTimeMillis() - HEARTBEAT_TIMEOUT_MS;
 
-    // 清理 t_chaos_application_device
     try {
       int appDeviceDeleted = applicationDeviceRepository.deleteByLastHealthPingTimeLt(threshold);
-      log.info(
-          "heartbeat cleanup: deleted {} records from t_chaos_application_device",
-          appDeviceDeleted);
+      log.info("heartbeat cleanup: deleted {} records from t_chaos_application_device", appDeviceDeleted);
     } catch (Exception e) {
       log.error("heartbeat cleanup: failed to delete from t_chaos_application_device", e);
     }
 
-    // 清理 t_chaos_device
     try {
       int deviceDeleted = deviceRepository.deleteByLastHealthPingTimeLt(threshold);
       log.info("heartbeat cleanup: deleted {} records from t_chaos_device", deviceDeleted);
     } catch (Exception e) {
       log.error("heartbeat cleanup: failed to delete from t_chaos_device", e);
     }
-  }
-
-  @Override
-  public void afterPropertiesSet() throws Exception {
-    String cronExpression = "0 0/2 * * * ?";
-    SchedulerJobCreateRequest schedulerJobCreateRequest =
-        new SchedulerJobCreateRequest(
-            cronExpression,
-            0,
-            HeartbeatCleanupSchedulerJob.class.getName(),
-            SchedulerConstant.BUSINESS_TYPE_HEARTBEAT_CLEANUP,
-            "-1",
-            HeartbeatCleanupSchedulerJob.class.getName());
-    schedulerJobService.addSchedulerJob(schedulerJobCreateRequest);
   }
 }
