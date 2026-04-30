@@ -26,6 +26,7 @@ import com.alibaba.chaosblade.box.dao.infrastructure.experiment.task.interceptor
 import com.alibaba.chaosblade.box.dao.model.ChaosBladeExpUidDO;
 import com.alibaba.chaosblade.box.dao.model.ExperimentTaskDO;
 import com.alibaba.chaosblade.box.dao.repository.ChaosBladeExpUidRepository;
+import com.alibaba.chaosblade.box.dao.repository.DeviceRepository;
 import com.google.common.base.Strings;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -41,6 +42,8 @@ public class JvmProjectNameCheckInvokeInterceptor extends BaseMiniAppInvokeInter
 
   @Autowired private ChaosBladeExpUidRepository chaosBladeExpUidRepository;
 
+  @Autowired private DeviceRepository deviceRepository;
+
   @Override
   protected boolean preHandle(
       MiniAppInvokeContext miniAppInvokeContext, ChaosAppResponse chaosAppResponse) {
@@ -53,19 +56,42 @@ public class JvmProjectNameCheckInvokeInterceptor extends BaseMiniAppInvokeInter
           activityInvokeContext.getContextData().getExperimentTaskDO();
       String processName =
           activityInvokeContext.getActivity().getArguments().getAllArguments().get("process");
-      if (Strings.isNullOrEmpty(processName)) {
+      // Only auto-fill if user provided neither pid nor process
+      String pidValue =
+          activityInvokeContext.getActivity().getArguments().getAllArguments().get("pid");
+      if (Strings.isNullOrEmpty(processName) && Strings.isNullOrEmpty(pidValue)) {
+        // Try 1: from prepare record (official agent flow)
         ChaosBladeExpUidDO chaosBladeExpUidDO =
             chaosBladeExpUidRepository.findLastByExperimentTaskIdAndHostAndAppCodeAndNotExpired(
                 experimentTaskDO.getTaskId(),
                 miniAppInvokeContext.getHost().getIp(),
                 MiniAppUtils.AGENT_INSTALL);
-        if (chaosBladeExpUidDO == null) {
-          return true;
+        if (chaosBladeExpUidDO != null) {
+          miniAppInvokeContext.addArgs(
+              "process", chaosBladeExpUidDO.getAttribute(ChaosBladeExpUidDO.ATTRIBUTE_PROCESS_NAME));
+          miniAppInvokeContext.addArgs(
+              "pid", chaosBladeExpUidDO.getAttribute(ChaosBladeExpUidDO.ATTRIBUTE_PID));
+        } else {
+          // Try 2: from device ext_info (proxy flow - javaPID stored during registration)
+          String deviceConfigId = miniAppInvokeContext.getHost().getDeviceConfigurationId();
+          if (deviceConfigId != null) {
+            com.alibaba.chaosblade.box.dao.model.DeviceDO deviceDO =
+                deviceRepository.findByConfigurationId(deviceConfigId);
+            if (deviceDO != null && deviceDO.getExtInfo() != null && !deviceDO.getExtInfo().isEmpty()) {
+              // ext_info is JSON: {"javaPid":"12345"}
+              try {
+                com.alibaba.fastjson.JSONObject extJson = com.alibaba.fastjson.JSON.parseObject(deviceDO.getExtInfo());
+                String javaPid = extJson.getString("javaPid");
+                if (javaPid != null && !javaPid.isEmpty()) {
+                  miniAppInvokeContext.addArgs("pid", javaPid);
+                }
+              } catch (Exception e) {
+                // fallback: treat ext_info as plain pid string (backward compatible)
+                miniAppInvokeContext.addArgs("pid", deviceDO.getExtInfo());
+              }
+            }
+          }
         }
-        miniAppInvokeContext.addArgs(
-            "process", chaosBladeExpUidDO.getAttribute(ChaosBladeExpUidDO.ATTRIBUTE_PROCESS_NAME));
-        miniAppInvokeContext.addArgs(
-            "pid", chaosBladeExpUidDO.getAttribute(ChaosBladeExpUidDO.ATTRIBUTE_PID));
       }
     }
     return true;
