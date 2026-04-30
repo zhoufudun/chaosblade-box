@@ -57,6 +57,13 @@ public class PrivateScope implements IChaosDomain {
   }
 
   public DeviceDO register(RegisteredCallbackRequest registeredCallbackRequest) {
+    // V2: use appInstance for configurationId to support multi-agent per VM
+    String uniqueId = registeredCallbackRequest.getAppName(); // appInstance field
+    if (uniqueId == null || uniqueId.isEmpty()
+        || "chaos-default-app".equals(uniqueId)) {
+      uniqueId = registeredCallbackRequest.getDeviceId(); // fallback for old agents
+    }
+
     String configurationId =
         generatorDeviceConfigurationId(
             registeredCallbackRequest.getUserId(),
@@ -64,7 +71,7 @@ public class PrivateScope implements IChaosDomain {
             PrivateCloudConstant.GLOBAL_VPC_ID,
             registeredCallbackRequest.getIp(),
             registeredCallbackRequest.getDeviceType(),
-            registeredCallbackRequest.getDeviceId());
+            uniqueId);
     DeviceDO oldDeviceDO = saveDevice(registeredCallbackRequest, configurationId);
     this.configurationId = oldDeviceDO.getConfigurationId();
     return oldDeviceDO;
@@ -121,6 +128,12 @@ public class PrivateScope implements IChaosDomain {
     oldDeviceDO.setClusterId(registeredCallbackRequest.getClusterId());
     oldDeviceDO.setClusterName(registeredCallbackRequest.getClusterName());
     oldDeviceDO.setProvider(registeredCallbackRequest.getStartupMode());
+    // Store Java process PID in ext_info as JSON (only for proxy, not official agent)
+    String proxyMode = registeredCallbackRequest.getProxyMode();
+    String javaPid = registeredCallbackRequest.getPid();
+    if ("true".equals(proxyMode) && javaPid != null && !javaPid.isEmpty() && !"0".equals(javaPid)) {
+      oldDeviceDO.setExtInfo("{\"javaPid\":\"" + javaPid + "\"}");
+    }
     oldDeviceDO.setRequestId(registeredCallbackRequest.getRequestId());
     return oldDeviceDO;
   }
