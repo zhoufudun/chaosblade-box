@@ -56,6 +56,9 @@ public interface DeviceMapper extends BaseMapper<DeviceDO> {
           + "</foreach>"
           + ")"
           + "</if>"
+          + "<if test='null != query.excludeSubApps and query.excludeSubApps'>"
+          + "AND td.device_name NOT LIKE '%(%)%' "
+          + "</if>"
           + "ORDER BY td.gmt_create DESC"
           + "</script>")
   IPage<DeviceDO> selectHostPageByKeyAndTags(

@@ -34,7 +34,9 @@ import com.alibaba.chaosblade.box.service.model.experiment.ExperimentScope;
 import com.alibaba.chaosblade.box.service.model.scope.ExperimentScopeFilter;
 import com.alibaba.chaosblade.box.service.model.scope.ExperimentScopePageableRequest;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -57,11 +59,63 @@ public class ExperimentHostsSearchCommand
   public PageableResponse<ExperimentScope> execute(
       ExperimentScopePageableRequest experimentScopePageableRequest) {
     PageableResponse<DeviceDO> pageableResponse = findAliveMachines(experimentScopePageableRequest);
+    List<ExperimentScope> flatList = pageableResponse.getData().stream()
+        .map(this::buildExperimentScope)
+        .collect(Collectors.toList());
+    List<ExperimentScope> treeList = buildTreeData(flatList);
     return PageableResponse.clone(
         pageableResponse,
-        pageableResponse.getData().stream()
-            .map(this::buildExperimentScope)
-            .collect(Collectors.toList()));
+        treeList);
+  }
+
+  /**
+   * 将平铺的设备列表按主机名分组为树形结构。
+   * 主机设备: hostName = "hostname"（不含括号）
+   * 应用设备: hostName = "hostname(appName:port)"
+   */
+  private List<ExperimentScope> buildTreeData(List<ExperimentScope> flatList) {
+    // 按 hostname 分组，保持顺序
+    Map<String, ExperimentScope> hostMap = new LinkedHashMap<>();
+    Map<String, List<ExperimentScope>> childrenMap = new LinkedHashMap<>();
+
+    for (ExperimentScope scope : flatList) {
+      String name = scope.getHostName() != null ? scope.getHostName() : "";
+      int parenIdx = name.indexOf('(');
+
+      if (parenIdx > 0 && name.endsWith(")")) {
+        // 应用设备: "hostname(appName:port)"
+        String hostname = name.substring(0, parenIdx);
+        childrenMap.computeIfAbsent(hostname, k -> new ArrayList<>()).add(scope);
+      } else {
+        // 主机设备
+        hostMap.put(name, scope);
+      }
+    }
+
+    // 组装树形结构
+    List<ExperimentScope> result = new ArrayList<>();
+    // 先处理有主机设备的
+    for (Map.Entry<String, ExperimentScope> entry : hostMap.entrySet()) {
+      ExperimentScope host = entry.getValue();
+      List<ExperimentScope> children = childrenMap.remove(entry.getKey());
+      if (children != null && !children.isEmpty()) {
+        host.setChildren(children);
+      }
+      result.add(host);
+    }
+    // 处理只有子应用没有主机设备的（创建虚拟主机行）
+    for (Map.Entry<String, List<ExperimentScope>> entry : childrenMap.entrySet()) {
+      ExperimentScope virtualHost = new ExperimentScope();
+      virtualHost.setHostName(entry.getKey());
+      virtualHost.setDeviceId("host-" + entry.getKey());
+      virtualHost.setConfigurationId("virtual-" + entry.getKey());
+      virtualHost.setPrivateIp(entry.getValue().get(0).getPrivateIp());
+      virtualHost.setAgentStatus(entry.getValue().get(0).getAgentStatus());
+      virtualHost.setChildren(entry.getValue());
+      result.add(virtualHost);
+    }
+
+    return result;
   }
 
   public ExperimentScope buildExperimentScope(DeviceDO deviceDO) {

@@ -140,6 +140,10 @@ public class ScopeController extends BaseController {
     query.setKey(cloudUserScopeRequest.getKey());
     query.setTags(cloudUserScopeRequest.getTags());
     query.setOsType(cloudUserScopeRequest.getOsType());
+    // 非应用模式下，排除子应用设备（proxy 注册的 hostname(app:port) 格式）
+    if (scopeTypeEnum == ScopeTypeEnum.HOST) {
+      query.setExcludeSubApps(true);
+    }
     return RestResponseUtil.okWithData(
         scopeService.queryAliveScopesByPage(
             user,

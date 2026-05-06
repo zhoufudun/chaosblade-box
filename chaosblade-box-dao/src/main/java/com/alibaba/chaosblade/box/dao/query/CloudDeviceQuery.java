@@ -44,4 +44,7 @@ public class CloudDeviceQuery extends ScopeQuery {
   private Integer limit;
 
   private List<String> tags;
+
+  /** 是否排除子应用设备（device_name 含括号的） */
+  private Boolean excludeSubApps;
 }
