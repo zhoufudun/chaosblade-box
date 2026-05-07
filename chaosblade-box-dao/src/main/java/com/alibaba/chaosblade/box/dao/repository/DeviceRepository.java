@@ -212,11 +212,11 @@ public class DeviceRepository extends ServiceImpl<DeviceMapper, DeviceDO>
     return deviceMapper.insert(deviceDO) > 0;
   }
 
-  public int deleteByLastHealthPingTimeLt(Long threshold) {
-    QueryWrapper<DeviceDO> queryWrapper = new QueryWrapper<>();
-    queryWrapper.lt("last_health_ping_time", threshold);
-    return deviceMapper.delete(queryWrapper);
-  }
+//  public int deleteByLastHealthPingTimeLt(Long threshold) {
+//    QueryWrapper<DeviceDO> queryWrapper = new QueryWrapper<>();
+//    queryWrapper.lt("last_health_ping_time", threshold);
+//    return deviceMapper.delete(queryWrapper);
+//  }
 
   public List<DeviceDO> findByConfigurationIds(List<String> configurationIds) {
     QueryWrapper<DeviceDO> queryWrapper = new QueryWrapper<DeviceDO>();
