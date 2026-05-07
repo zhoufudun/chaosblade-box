@@ -37,7 +37,7 @@ public final class SchedulerConstant {
 
   public static Integer BUSINESS_TYPE_APPLICATION_CHANGE_DISABLED_TRUE = 70;
 
-  public static Integer BUSINESS_TYPE_HEARTBEAT_CLEANUP = 80;
+//  public static Integer BUSINESS_TYPE_HEARTBEAT_CLEANUP = 80;
 
   public static String SCHEDULER_PARAM_KET_JOB = "job";
 
