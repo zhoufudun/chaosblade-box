@@ -33,7 +33,7 @@ public class HeartbeatCleanupSchedulerJob {
 
   @Autowired private DeviceRepository deviceRepository;
 
-  @Scheduled(fixedRate = 120000)
+//  @Scheduled(fixedRate = 120000)
   public void cleanup() {
     long threshold = System.currentTimeMillis() - HEARTBEAT_TIMEOUT_MS;
 
