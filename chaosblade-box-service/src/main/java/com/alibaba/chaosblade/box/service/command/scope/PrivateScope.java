@@ -71,7 +71,8 @@ public class PrivateScope implements IChaosDomain {
             PrivateCloudConstant.GLOBAL_VPC_ID,
             registeredCallbackRequest.getIp(),
             registeredCallbackRequest.getDeviceType(),
-            uniqueId);
+            uniqueId,
+            String.valueOf(registeredCallbackRequest.getPort()));
     DeviceDO oldDeviceDO = saveDevice(registeredCallbackRequest, configurationId);
     this.configurationId = oldDeviceDO.getConfigurationId();
     return oldDeviceDO;
@@ -128,10 +129,9 @@ public class PrivateScope implements IChaosDomain {
     oldDeviceDO.setClusterId(registeredCallbackRequest.getClusterId());
     oldDeviceDO.setClusterName(registeredCallbackRequest.getClusterName());
     oldDeviceDO.setProvider(registeredCallbackRequest.getStartupMode());
-    // Store Java process PID in ext_info as JSON (only for proxy, not official agent)
-    String proxyMode = registeredCallbackRequest.getProxyMode();
+    // Store Java process PID in ext_info as JSON (unconditionally for agent-manage support)
     String javaPid = registeredCallbackRequest.getPid();
-    if ("true".equals(proxyMode) && javaPid != null && !javaPid.isEmpty() && !"0".equals(javaPid)) {
+    if (javaPid != null && !javaPid.isEmpty() && !"0".equals(javaPid)) {
       oldDeviceDO.setExtInfo("{\"javaPid\":\"" + javaPid + "\"}");
     }
     oldDeviceDO.setRequestId(registeredCallbackRequest.getRequestId());
@@ -189,7 +189,8 @@ public class PrivateScope implements IChaosDomain {
       String vpcId,
       String hostIp,
       Integer deviceType,
-      String deviceId) {
+      String deviceId,
+      String port) {
     Preconditions.checkArgument(StrUtil.isNotBlank(userId));
     Preconditions.checkArgument(StrUtil.isNotBlank(vpcId));
     Preconditions.checkArgument(StrUtil.isNotBlank(deviceId));
@@ -201,6 +202,10 @@ public class PrivateScope implements IChaosDomain {
     stringBuffer.append('|').append(hostIp);
     stringBuffer.append('|').append(deviceType);
     stringBuffer.append('|').append(deviceId);
+    // Include port in configurationId to distinguish multi-agent instances on same host
+    if (port != null && !port.isEmpty()) {
+      stringBuffer.append('|').append(port);
+    }
     return DigestUtils.md5Hex(stringBuffer.toString());
   }
 
