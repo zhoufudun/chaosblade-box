@@ -33,7 +33,7 @@ public interface ApplicationDeviceMapper extends BaseMapper<ApplicationDeviceDO>
       "<script>"
           + "SELECT ad.* FROM t_chaos_application_device ad "
           + "INNER JOIN ("
-          + "  SELECT private_ip, MAX(id) as max_id "
+          + "  SELECT configuration_id, MAX(id) as max_id "
           + "  FROM t_chaos_application_device "
           + "  WHERE 1=1 "
           + "<if test='null != query.appId and query.appId != \"\" '>"
@@ -68,8 +68,8 @@ public interface ApplicationDeviceMapper extends BaseMapper<ApplicationDeviceDO>
           + "</foreach>"
           + "  )"
           + "</if>"
-          + "  GROUP BY private_ip"
-          + ") grouped ON ad.id = grouped.max_id AND ad.private_ip = grouped.private_ip "
+          + "  GROUP BY configuration_id"
+          + ") grouped ON ad.id = grouped.max_id AND ad.configuration_id = grouped.configuration_id "
           + "ORDER BY ad.gmt_create DESC"
           + "</script>")
   IPage<ApplicationDeviceDO> selectPageByTagsForHost(

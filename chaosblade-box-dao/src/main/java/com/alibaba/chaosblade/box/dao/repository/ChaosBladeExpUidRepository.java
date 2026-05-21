@@ -80,9 +80,9 @@ public class ChaosBladeExpUidRepository implements IRepository<String, ChaosBlad
   }
 
   public List<ChaosBladeExpUidDO> findByActivityTaskId(String activityTaskId) {
-    ChaosBladeExpUidDO chaosBladeExpUidDO = new ChaosBladeExpUidDO();
-    chaosBladeExpUidDO.setActivityTaskId(activityTaskId);
-    return chaosBladeExpUidMapper.selectList(new QueryWrapper<>(chaosBladeExpUidDO));
+    QueryWrapper<ChaosBladeExpUidDO> queryWrapper = new QueryWrapper<>();
+    queryWrapper.eq(ACTIVITY_TASK_ID, activityTaskId);
+    return chaosBladeExpUidMapper.selectList(queryWrapper);
   }
 
   @Override
@@ -133,9 +133,8 @@ public class ChaosBladeExpUidRepository implements IRepository<String, ChaosBlad
   }
 
   public ChaosBladeExpUidDO findByAppExecutionId(String appExecutionId) {
-    ChaosBladeExpUidDO chaosBladeExpUidDO = new ChaosBladeExpUidDO();
-    chaosBladeExpUidDO.setAppExecutionId(appExecutionId);
-    QueryWrapper<ChaosBladeExpUidDO> queryWrapper = new QueryWrapper<>(chaosBladeExpUidDO);
+    QueryWrapper<ChaosBladeExpUidDO> queryWrapper = new QueryWrapper<>();
+    queryWrapper.eq(APP_EXECUTION_ID, appExecutionId);
     wrapperLast(queryWrapper);
     return chaosBladeExpUidMapper.selectOne(queryWrapper);
   }
@@ -162,10 +161,10 @@ public class ChaosBladeExpUidRepository implements IRepository<String, ChaosBlad
   }
 
   public List<ChaosBladeExpUidDO> findByExperimentTaskIdAndNotExpired(String experimentTaskId) {
-    ChaosBladeExpUidDO chaosBladeExpUidDO = new ChaosBladeExpUidDO();
-    chaosBladeExpUidDO.setExperimentTaskId(experimentTaskId);
-    chaosBladeExpUidDO.setExpired(false);
-    return chaosBladeExpUidMapper.selectList(new QueryWrapper<>(chaosBladeExpUidDO));
+    QueryWrapper<ChaosBladeExpUidDO> queryWrapper = new QueryWrapper<>();
+    queryWrapper.eq(EXPERIMENT_TASK_ID, experimentTaskId);
+    queryWrapper.eq(EXPIRED, false);
+    return chaosBladeExpUidMapper.selectList(queryWrapper);
   }
 
   public List<ChaosBladeExpUidDO> findWithNotExpireAndExperimentTaskFinished() {

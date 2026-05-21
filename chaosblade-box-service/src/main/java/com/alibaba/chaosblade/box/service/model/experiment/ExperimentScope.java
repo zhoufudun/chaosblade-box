@@ -74,7 +74,4 @@ public class ExperimentScope implements Serializable {
 
   /** 安装模式 */
   private String installMode;
-
-  /** 子应用设备（树形结构） */
-  private List<ExperimentScope> children;
 }

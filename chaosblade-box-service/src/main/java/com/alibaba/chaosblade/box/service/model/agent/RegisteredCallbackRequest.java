@@ -88,7 +88,4 @@ public class RegisteredCallbackRequest extends BaseCallbackRequest {
 
   @JSONField(name = "agentMode")
   private String agentMode;
-
-  @JSONField(name = "proxyMode")
-  private String proxyMode;
 }

@@ -57,13 +57,6 @@ public class PrivateScope implements IChaosDomain {
   }
 
   public DeviceDO register(RegisteredCallbackRequest registeredCallbackRequest) {
-    // V2: use appInstance for configurationId to support multi-agent per VM
-    String uniqueId = registeredCallbackRequest.getAppName(); // appInstance field
-    if (uniqueId == null || uniqueId.isEmpty()
-        || "chaos-default-app".equals(uniqueId)) {
-      uniqueId = registeredCallbackRequest.getDeviceId(); // fallback for old agents
-    }
-
     String configurationId =
         generatorDeviceConfigurationId(
             registeredCallbackRequest.getUserId(),
@@ -71,8 +64,7 @@ public class PrivateScope implements IChaosDomain {
             PrivateCloudConstant.GLOBAL_VPC_ID,
             registeredCallbackRequest.getIp(),
             registeredCallbackRequest.getDeviceType(),
-            uniqueId,
-            String.valueOf(registeredCallbackRequest.getPort()));
+            registeredCallbackRequest.getDeviceId());
     DeviceDO oldDeviceDO = saveDevice(registeredCallbackRequest, configurationId);
     this.configurationId = oldDeviceDO.getConfigurationId();
     return oldDeviceDO;
@@ -189,8 +181,7 @@ public class PrivateScope implements IChaosDomain {
       String vpcId,
       String hostIp,
       Integer deviceType,
-      String deviceId,
-      String port) {
+      String deviceId) {
     Preconditions.checkArgument(StrUtil.isNotBlank(userId));
     Preconditions.checkArgument(StrUtil.isNotBlank(vpcId));
     Preconditions.checkArgument(StrUtil.isNotBlank(deviceId));
@@ -202,10 +193,6 @@ public class PrivateScope implements IChaosDomain {
     stringBuffer.append('|').append(hostIp);
     stringBuffer.append('|').append(deviceType);
     stringBuffer.append('|').append(deviceId);
-    // Include port in configurationId to distinguish multi-agent instances on same host
-    if (port != null && !port.isEmpty()) {
-      stringBuffer.append('|').append(port);
-    }
     return DigestUtils.md5Hex(stringBuffer.toString());
   }
 

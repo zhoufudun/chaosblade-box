@@ -165,19 +165,60 @@ public class MiniAppChaosBladeInvokeInterceptor extends BaseMiniAppInvokeInterce
     if (MiniAppUtils.isJvmAgentInstall(activityTaskDO.getAppCode())) {
       return queryJavaAgentExpUidDO(host, experimentTaskId);
     }
+    log.info("[getChaosBladeExpId] host={}, configId={}, attackActivityTaskId={}",
+        host.getIp(), host.getDeviceConfigurationId(), activityTaskDO.getAttackActivityTaskId());
     if (activityTaskDO.getAttackActivityTaskId() != null) {
       chaosBladeExpUidDO = getRecordIfFoundAttackActivityTaskId(host, activityTaskDO);
+      log.info("[getChaosBladeExpId] found by attackActivityTaskId: expUid={}",
+          chaosBladeExpUidDO != null ? chaosBladeExpUidDO.getExpUid() : "NULL");
     } else {
       chaosBladeExpUidDO =
           getRecordIfNotfoundAttackActivityTaskId(experimentTaskId, host, activityTaskDO);
+      log.info("[getChaosBladeExpId] found by experimentTaskId+host: expUid={}",
+          chaosBladeExpUidDO != null ? chaosBladeExpUidDO.getExpUid() : "NULL");
     }
     return Optional.ofNullable(chaosBladeExpUidDO).map(ChaosBladeExpUidDO::getExpUid).orElse(null);
   }
 
+  /**
+   * 根据攻击阶段的 activityTaskId 查找对应的 UID 记录。
+   *
+   * 解决同一台 VM 上多 Agent 实例（agent-manage 场景）恢复时 UID 冲突问题：
+   * 原逻辑用 activityTaskId + host IP 查询，同 IP 多设备会查到同一条记录。
+   * 改为查出所有记录后用 configurationId 精确匹配当前设备。
+   *
+   * @param host 当前恢复目标设备
+   * @param activityTaskDO 恢复阶段的 activityTask（含 attackActivityTaskId）
+   * @return 当前设备对应的 UID 记录，用于构造 destroy 命令
+   */
   private ChaosBladeExpUidDO getRecordIfFoundAttackActivityTaskId(
       Host host, ActivityTaskDO activityTaskDO) {
-    return chaosBladeExpUidRepository.findLastByActivityTaskIdAndHost(
-        activityTaskDO.getAttackActivityTaskId(), host.getIp());
+    // 查出攻击阶段该 activityTask 下所有 UID 记录（每个设备一条）
+    List<ChaosBladeExpUidDO> records = chaosBladeExpUidRepository.findByActivityTaskId(
+        activityTaskDO.getAttackActivityTaskId());
+    if (records == null || records.isEmpty()) {
+      return null;
+    }
+    // 单条记录：直接返回（单设备场景，最常见，无歧义）
+    if (records.size() == 1) {
+      return records.get(0);
+    }
+    // 多条记录（同 IP 多 Agent 实例）：用 configurationId 精确匹配当前设备
+    String configId = host.getDeviceConfigurationId();
+    if (configId != null) {
+      for (ChaosBladeExpUidDO record : records) {
+        if (configId.equals(record.getConfigurationId())) {
+          return record;
+        }
+      }
+    }
+    // 回退：用 host IP 匹配（兼容旧数据，configurationId 为空的场景）
+    for (ChaosBladeExpUidDO record : records) {
+      if (host.getIp().equals(record.getHost())) {
+        return record;
+      }
+    }
+    return records.get(0);
   }
 
   /**
@@ -262,14 +303,42 @@ public class MiniAppChaosBladeInvokeInterceptor extends BaseMiniAppInvokeInterce
     return chaosBladeExpUidDO;
   }
 
+  /**
+   * 创建或查找 ChaosBlade 实验 UID 记录。
+   *
+   * 修复同 IP 多 Agent 场景：原逻辑用 activityTaskId + host IP 查询，
+   * 同 IP 多设备会查到同一条记录导致后续设备跳过创建。
+   * 改为用 configurationId 精确匹配当前设备的记录。
+   */
   private void createChaosBladeExpRecord(
       MiniAppInvokeContext miniAppInvokeContext,
       String expId,
       ChaosBladeAppResponse chaosAppResponse) {
     Host host = miniAppInvokeContext.getHost();
-    ChaosBladeExpUidDO chaosBladeExpUidDO =
-        chaosBladeExpUidRepository.findLastByActivityTaskIdAndHost(
-            miniAppInvokeContext.getActivityTaskId(), host.getIp());
+    String configId = host.getDeviceConfigurationId();
+    ChaosBladeExpUidDO chaosBladeExpUidDO = null;
+
+    if (configId != null) {
+      // 多 Agent 场景：用 configurationId 精确匹配当前设备的记录
+      List<ChaosBladeExpUidDO> records = chaosBladeExpUidRepository.findByActivityTaskId(
+          miniAppInvokeContext.getActivityTaskId());
+      log.info("[createChaosBladeExpRecord] configId={}, activityTaskId={}, records.size={}",
+          configId, miniAppInvokeContext.getActivityTaskId(), records.size());
+      for (ChaosBladeExpUidDO r : records) {
+        if (configId.equals(r.getConfigurationId())) {
+          chaosBladeExpUidDO = r;
+          break;
+        }
+      }
+    } else {
+      // 回退：官方 Agent 单设备场景，用原有逻辑
+      log.info("[createChaosBladeExpRecord] configId is null, using fallback by IP");
+      chaosBladeExpUidDO = chaosBladeExpUidRepository.findLastByActivityTaskIdAndHost(
+          miniAppInvokeContext.getActivityTaskId(), host.getIp());
+    }
+
+    log.info("[createChaosBladeExpRecord] existing record found={}, expId to save={}",
+        chaosBladeExpUidDO != null, expId);
     if (chaosBladeExpUidDO == null) {
       chaosBladeExpUidDO =
           chaosBladeExpUidRepository.createChaosBladeExpRecord(
