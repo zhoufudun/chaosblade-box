@@ -331,7 +331,7 @@ public class MiniAppChaosBladeInvokeInterceptor extends BaseMiniAppInvokeInterce
         }
       }
     } else {
-      // 回退：官方 Agent 单设备场景，用原有逻辑
+      // 防御性回退：configurationId 为空的异常情况，用 IP 匹配
       log.info("[createChaosBladeExpRecord] configId is null, using fallback by IP");
       chaosBladeExpUidDO = chaosBladeExpUidRepository.findLastByActivityTaskIdAndHost(
           miniAppInvokeContext.getActivityTaskId(), host.getIp());
