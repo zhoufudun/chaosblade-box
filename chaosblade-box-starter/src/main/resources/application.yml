@@ -38,6 +38,8 @@ chaos:
   function:
     sync:
       type: ALL
+  scene:
+    host-only: true # true=隐藏Kubernetes场景，false=显示Kubernetes场景
   server:
     domain: ''
   sync:
