@@ -54,6 +54,10 @@ public class RegisteredRequestCommand
     log.info(
         "start handle client register request,{}" + JSON.toJSONString(registeredCallbackRequest));
     try {
+      // === 多实例 Agent 支持：从 appGroup 解析 javaPid/javaPort ===
+      resolveMultiInstanceMeta(registeredCallbackRequest);
+      // === 多实例 Agent 支持结束 ===
+
       // 1. check parameter license
       if (Strings.isNullOrEmpty(registeredCallbackRequest.getAk())) {
         return Response.ofFailure(Response.Code.Parameter_Empty, "license Required");
@@ -96,6 +100,57 @@ public class RegisteredRequestCommand
       LOGGER.error("execute agent register request failed", ex);
       return Response.ofFailure(
           Response.Code.SERVER_ERROR, "execute agent register request failed:" + ex.getMessage());
+    }
+  }
+
+  /**
+   * 多实例 Agent 支持：从 appGroup 中解析 javaPid/javaPort 元数据。
+   * <p>
+   * agent-manage 启动 agent 时会将 javaPid 和 javaPort 编码到 appGroup 字段中：
+   * 格式: "originalAppGroup#javaPid=12345#javaPort=18080"
+   * <p>
+   * 本方法做三件事：
+   * 1. 恢复原始 appGroup（去掉 #javaPid=... 后缀）
+   * 2. 将 javaPid 设置到 pid 字段
+   * 3. 改写 instanceId 和 deviceId 使多实例在 Box 中唯一
+   *    格式: hostname-appInstance:javaPort
+   */
+  private void resolveMultiInstanceMeta(RegisteredCallbackRequest request) {
+    String appGroup = request.getAppGroup();
+    if (appGroup == null || !appGroup.contains("#javaPid=")) {
+      return; // 非多实例模式，不处理
+    }
+
+    int firstHash = appGroup.indexOf('#');
+    String originalAppGroup = appGroup.substring(0, firstHash);
+    String meta = appGroup.substring(firstHash + 1);
+
+    String javaPid = null;
+    String javaPort = null;
+    for (String kv : meta.split("#")) {
+      String[] pair = kv.split("=", 2);
+      if (pair.length == 2) {
+        if ("javaPid".equals(pair[0])) javaPid = pair[1];
+        if ("javaPort".equals(pair[0])) javaPort = pair[1];
+      }
+    }
+
+    // 恢复原始 appGroup
+    request.setAppGroup(originalAppGroup);
+
+    // 改写 instanceId 和 deviceId 使多实例唯一
+    String appName = request.getAppName();
+    String instanceId = request.getInstanceId();
+    if (appName != null && !appName.isEmpty() && javaPort != null) {
+      String newId = instanceId + "-" + appName + ":" + javaPort;
+      request.setInstanceId(newId);
+      request.setDeviceId(newId);
+      log.info("[multi-instance] rewrite instanceId={}, appGroup={}", newId, originalAppGroup);
+    }
+
+    // 将 javaPid 设置到 pid 字段
+    if (javaPid != null && !javaPid.isEmpty()) {
+      request.setPid(javaPid);
     }
   }
 }
