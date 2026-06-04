@@ -41,6 +41,9 @@ public class RegisteredCallbackRequest extends BaseCallbackRequest {
   @JSONField(name = PrivateCloudConstant.PARAM_AGENT_PROCESS_ID)
   private String pid;
 
+  /** javaProcess - jar文件名（由 resolveMultiInstanceMeta 从 appGroup 解析写入） */
+  private String javaProcess;
+
   private String osVersion;
 
   @JSONField(name = "uptime")

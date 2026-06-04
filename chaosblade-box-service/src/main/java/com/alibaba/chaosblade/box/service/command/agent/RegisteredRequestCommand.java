@@ -104,21 +104,28 @@ public class RegisteredRequestCommand
   }
 
   /**
-   * 多实例 Agent 支持：从 appGroup 中解析 javaPid/javaPort 元数据。
+   * 多实例 Agent 支持：从 appGroup 中解析 javaPid/javaPort/javaProcess 元数据。
    * <p>
-   * agent-manage 启动 agent 时会将 javaPid 和 javaPort 编码到 appGroup 字段中：
-   * 格式: "originalAppGroup#javaPid=12345#javaPort=18080"
+   * agent-manage 启动 agent 时会将元数据编码到 appGroup 字段中：
+   * 格式: "originalAppGroup#javaPid=12345#javaPort=18080#javaProcess=app.jar"
    * <p>
-   * 本方法做三件事：
-   * 1. 恢复原始 appGroup（去掉 #javaPid=... 后缀）
-   * 2. 将 javaPid 设置到 pid 字段
-   * 3. 改写 instanceId 和 deviceId 使多实例在 Box 中唯一
+   * 触发条件：appGroup 包含 #javaPid= 或 #javaProcess= 之一
+   * <p>
+   * 本方法做四件事：
+   * 1. 恢复原始 appGroup（去掉 # 后的编码部分）
+   * 2. 将 javaPid 设置到 pid 字段（如果存在）
+   * 3. 将 javaProcess 设置到 javaProcess 字段（如果存在，供 ext_info 存储）
+   * 4. 改写 instanceId 和 deviceId 使多实例在 Box 中唯一
    *    格式: hostname-appInstance:javaPort
    */
   private void resolveMultiInstanceMeta(RegisteredCallbackRequest request) {
     String appGroup = request.getAppGroup();
-    if (appGroup == null || !appGroup.contains("#javaPid=")) {
-      return; // 非多实例模式，不处理
+    if (appGroup == null || !appGroup.contains("#")) {
+      return; // 不含 # 分隔符，非多实例模式
+    }
+    // 至少需要包含 javaPid 或 javaProcess 之一才触发
+    if (!appGroup.contains("#javaPid=") && !appGroup.contains("#javaProcess=")) {
+      return;
     }
 
     int firstHash = appGroup.indexOf('#');
@@ -127,11 +134,13 @@ public class RegisteredRequestCommand
 
     String javaPid = null;
     String javaPort = null;
+    String javaProcess = null;
     for (String kv : meta.split("#")) {
       String[] pair = kv.split("=", 2);
       if (pair.length == 2) {
         if ("javaPid".equals(pair[0])) javaPid = pair[1];
         if ("javaPort".equals(pair[0])) javaPort = pair[1];
+        if ("javaProcess".equals(pair[0])) javaProcess = pair[1];
       }
     }
 
@@ -148,9 +157,17 @@ public class RegisteredRequestCommand
       log.info("[multi-instance] rewrite instanceId={}, appGroup={}", newId, originalAppGroup);
     }
 
-    // 将 javaPid 设置到 pid 字段
-    if (javaPid != null && !javaPid.isEmpty()) {
+    // 将 javaPid 设置到 pid 字段；如果没有 javaPid 但有 javaProcess，清除 agent 自身 PID
+    if (javaPid != null && !javaPid.isEmpty() && !"0".equals(javaPid)) {
       request.setPid(javaPid);
+    } else if (javaProcess != null && !javaProcess.isEmpty()) {
+      // 只有 javaProcess 场景：清除 agent 自身上报的 pid，避免存入 ext_info
+      request.setPid(null);
+    }
+
+    // 将 javaProcess 存入 request 的扩展属性（供 PrivateScope 写入 ext_info）
+    if (javaProcess != null && !javaProcess.isEmpty()) {
+      request.setJavaProcess(javaProcess);
     }
   }
 }

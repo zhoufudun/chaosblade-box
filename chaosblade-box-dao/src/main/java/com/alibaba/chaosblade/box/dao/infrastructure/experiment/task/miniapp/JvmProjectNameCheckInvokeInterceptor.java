@@ -72,18 +72,25 @@ public class JvmProjectNameCheckInvokeInterceptor extends BaseMiniAppInvokeInter
           miniAppInvokeContext.addArgs(
               "pid", chaosBladeExpUidDO.getAttribute(ChaosBladeExpUidDO.ATTRIBUTE_PID));
         } else {
-          // Try 2: from device ext_info (proxy flow - javaPID stored during registration)
+          // Try 2: from device ext_info (javaPid or javaProcess stored during registration)
           String deviceConfigId = miniAppInvokeContext.getHost().getDeviceConfigurationId();
           if (deviceConfigId != null) {
             com.alibaba.chaosblade.box.dao.model.DeviceDO deviceDO =
                 deviceRepository.findByConfigurationId(deviceConfigId);
             if (deviceDO != null && deviceDO.getExtInfo() != null && !deviceDO.getExtInfo().isEmpty()) {
-              // ext_info is JSON: {"javaPid":"12345"}
+              // ext_info is JSON: {"javaPid":"12345"} or {"javaProcess":"app.jar"} or both
               try {
                 com.alibaba.fastjson.JSONObject extJson = com.alibaba.fastjson.JSON.parseObject(deviceDO.getExtInfo());
                 String javaPid = extJson.getString("javaPid");
                 if (javaPid != null && !javaPid.isEmpty()) {
+                  // 优先用 javaPid 填充 --pid
                   miniAppInvokeContext.addArgs("pid", javaPid);
+                } else {
+                  // 没有 javaPid，用 javaProcess 填充 --process
+                  String javaProcess = extJson.getString("javaProcess");
+                  if (javaProcess != null && !javaProcess.isEmpty()) {
+                    miniAppInvokeContext.addArgs("process", javaProcess);
+                  }
                 }
               } catch (Exception e) {
                 // fallback: treat ext_info as plain pid string (backward compatible)

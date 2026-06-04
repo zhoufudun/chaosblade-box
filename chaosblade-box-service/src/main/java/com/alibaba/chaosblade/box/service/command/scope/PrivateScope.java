@@ -121,10 +121,19 @@ public class PrivateScope implements IChaosDomain {
     oldDeviceDO.setClusterId(registeredCallbackRequest.getClusterId());
     oldDeviceDO.setClusterName(registeredCallbackRequest.getClusterName());
     oldDeviceDO.setProvider(registeredCallbackRequest.getStartupMode());
-    // Store Java process PID in ext_info as JSON (unconditionally for agent-manage support)
+    // Store Java process info in ext_info as JSON (for agent-manage multi-instance support)
     String javaPid = registeredCallbackRequest.getPid();
+    String javaProcess = registeredCallbackRequest.getJavaProcess();
     if (javaPid != null && !javaPid.isEmpty() && !"0".equals(javaPid)) {
-      oldDeviceDO.setExtInfo("{\"javaPid\":\"" + javaPid + "\"}");
+      // 有 javaPid：存 javaPid（优先用于 JVM 实验自动填充 --pid）
+      if (javaProcess != null && !javaProcess.isEmpty()) {
+        oldDeviceDO.setExtInfo("{\"javaPid\":\"" + javaPid + "\",\"javaProcess\":\"" + javaProcess + "\"}");
+      } else {
+        oldDeviceDO.setExtInfo("{\"javaPid\":\"" + javaPid + "\"}");
+      }
+    } else if (javaProcess != null && !javaProcess.isEmpty()) {
+      // 无 javaPid 但有 javaProcess：存 javaProcess（用于 JVM 实验自动填充 --process）
+      oldDeviceDO.setExtInfo("{\"javaProcess\":\"" + javaProcess + "\"}");
     }
     oldDeviceDO.setRequestId(registeredCallbackRequest.getRequestId());
     return oldDeviceDO;
