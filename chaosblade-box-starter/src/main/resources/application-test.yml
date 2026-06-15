@@ -1,0 +1,20 @@
+logging:
+  level:
+    root: info
+    org.springframework: info
+    org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping: info
+    com.alibaba.chaosblade.box: info
+    com.alibaba.chaosblade.box.scheduler.AgentPingScheduleJob: info
+
+spring:
+  datasource:
+    continue-on-error: true
+    data: classpath:sql/data/*.sql
+    driver-class-name: com.mysql.jdbc.Driver
+    initialization-mode: always
+    initialize: true
+    password: App@0000
+    schema: classpath:sql/schema/chaosblade-box-ddl.sql
+    type: com.zaxxer.hikari.HikariDataSource
+    url: jdbc:mysql://10.68.37.172:3306/chaosblade?characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+    username: app
