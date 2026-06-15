@@ -13,8 +13,8 @@ spring:
     driver-class-name: com.mysql.jdbc.Driver
     initialization-mode: always
     initialize: true
-    password: Tiger@2026sre
+    password: Y9R%b!hNLEf*aF^
     schema: classpath:sql/schema/chaosblade-box-ddl.sql
     type: com.zaxxer.hikari.HikariDataSource
     url: jdbc:mysql://10.189.36.139:3306/chaosblade?characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
-    username: admim
+    username: chaosblade-box
