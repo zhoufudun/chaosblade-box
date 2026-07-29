@@ -29,6 +29,8 @@ import com.alibaba.chaosblade.box.dao.query.ApplicationDeviceQuery;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.google.common.base.Strings;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -55,6 +57,35 @@ public class ApplicationDeviceRepository implements IRepository<String, Applicat
     QueryWrapper<ApplicationDeviceDO> queryWrapper = new QueryWrapper<>();
     queryWrapper.eq("configuration_id", appConfigurationId);
     return Optional.ofNullable(applicationDeviceMapper.selectOne(queryWrapper));
+  }
+
+  /**
+   * 查询指定 userId 下、给定 device_name 集合中当前处于 ONLINE 的那些 device_name。
+   *
+   * <p>供 agent-manage 的僵尸检测（Tier2）使用：device_name 即 {@code {hostname}-{appName}:{javaPort}}，
+   * agent-manage 可据 hostname/appName/javaPort 精确重建。基于 application_device（心跳驱动在线），
+   * 而非 device 表（ping 驱动在线）——因为 box 会 ping 活着的僵尸 agent 使 device 表保持在线，
+   * 但机器数看的是 application_device。
+   *
+   * @param userId 用户ID（由 license 解析）
+   * @param deviceNames 待查询的 device_name 列表
+   * @return 其中当前 ONLINE 的 device_name 子集
+   */
+  public List<String> findOnlineDeviceNames(String userId, List<String> deviceNames) {
+    if (Strings.isNullOrEmpty(userId) || deviceNames == null || deviceNames.isEmpty()) {
+      return Collections.emptyList();
+    }
+    QueryWrapper<ApplicationDeviceDO> queryWrapper = new QueryWrapper<>();
+    queryWrapper.select("device_name");
+    queryWrapper.eq("user_id", userId);
+    queryWrapper.eq("status", DeviceStatus.ONLINE.getStatus());
+    queryWrapper.in("device_name", deviceNames);
+    List<ApplicationDeviceDO> list = applicationDeviceMapper.selectList(queryWrapper);
+    List<String> result = new ArrayList<>(list.size());
+    for (ApplicationDeviceDO deviceDO : list) {
+      result.add(deviceDO.getDeviceName());
+    }
+    return result;
   }
 
   public Optional<ApplicationDeviceDO> findByAppIdAndAppConfigurationId(

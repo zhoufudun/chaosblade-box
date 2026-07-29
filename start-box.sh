@@ -18,7 +18,7 @@ load_env() {
         local)
             DB_URL="jdbc:mysql://127.0.0.1:3306/chaosblade?characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true"
             DB_USER="root"
-            DB_PASS="root23456"
+            DB_PASS="root123456"
             ;;
         test)
             DB_URL="jdbc:mysql://10.68.37.172:3306/chaosblade?characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true"
